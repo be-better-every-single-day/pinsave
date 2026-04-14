@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PinSave – Download Pinterest Videos, Images & GIFs Free</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --red:#E60023; --red-dark:#ad081b; --red-light:#fff0f1;
+  --bg:#f9f9f9; --surface:#fff; --text:#111; --muted:#555; --light:#999;
+  --border:#e4e4e4; --radius:16px;
+  --shadow:0 4px 24px rgba(0,0,0,.07);
+  --shadow-lg:0 8px 48px rgba(0,0,0,.12);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* NAV */
+nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:62px;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:9px;font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;color:var(--text);text-decoration:none}
+.logo-icon{width:34px;height:34px;background:var(--red);border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:1rem}
+.logo span{color:var(--red)}
+.nav-links{display:flex;align-items:center;gap:2px;list-style:none}
+.nav-links a{text-decoration:none;color:var(--muted);font-size:.87rem;font-weight:500;padding:.4rem .8rem;border-radius:8px;transition:all .15s}
+.nav-links a:hover{background:var(--red-light);color:var(--red)}
+.ext-btn{display:flex;align-items:center;gap:6px;background:var(--red);color:#fff;text-decoration:none;padding:.42rem 1rem;border-radius:9px;font-size:.84rem;font-weight:700;font-family:'Syne',sans-serif;transition:background .15s}
+.ext-btn:hover{background:var(--red-dark)}
+@media(max-width:640px){.nav-links{display:none}}
+
+/* HERO */
+.hero{background:linear-gradient(155deg,#fff 0%,#fff0f1 55%,#fff 100%);padding:3.5rem 1.5rem 2.5rem;text-align:center}
+.badge{display:inline-flex;align-items:center;gap:6px;background:var(--red-light);color:var(--red);font-size:.78rem;font-weight:700;padding:4px 14px;border-radius:20px;margin-bottom:1.3rem;letter-spacing:.3px}
+.hero h1{font-family:'Syne',sans-serif;font-size:clamp(1.7rem,5vw,3rem);font-weight:800;line-height:1.15;margin-bottom:.9rem}
+.hero h1 span{color:var(--red)}
+.hero>p{font-size:1.05rem;color:var(--muted);max-width:530px;margin:0 auto 2rem;line-height:1.7}
+
+/* DOWNLOAD BOX */
+.dl-box{background:var(--surface);border-radius:20px;box-shadow:var(--shadow-lg);padding:1.75rem;max-width:660px;margin:0 auto;border:1px solid var(--border)}
+.tabs{display:flex;gap:6px;margin-bottom:1.1rem;flex-wrap:wrap}
+.tab{display:flex;align-items:center;gap:5px;padding:5px 13px;border-radius:20px;font-size:.8rem;font-weight:600;border:1.5px solid var(--border);background:#fff;color:var(--muted);cursor:pointer;transition:all .15s;user-select:none}
+.tab.on{background:var(--red-light);border-color:var(--red);color:var(--red)}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.url-row{display:flex;gap:8px}
+.inp-wrap{flex:1;position:relative}
+#urlInput{width:100%;height:50px;border:2px solid var(--border);border-radius:11px;padding:0 3.2rem 0 1rem;font-size:.93rem;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;transition:border-color .15s}
+#urlInput:focus{border-color:var(--red);background:#fff}
+#urlInput::placeholder{color:var(--light)}
+.paste-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--light);font-size:.78rem;font-weight:700;padding:4px 7px;border-radius:6px;display:flex;align-items:center;gap:3px;transition:all .15s}
+.paste-btn:hover{color:var(--red);background:var(--red-light)}
+#dlBtn{height:50px;background:var(--red);color:#fff;border:none;border-radius:11px;padding:0 1.6rem;font-size:.95rem;font-weight:700;font-family:'Syne',sans-serif;cursor:pointer;display:flex;align-items:center;gap:7px;white-space:nowrap;transition:all .15s}
+#dlBtn:hover{background:var(--red-dark)}
+#dlBtn:active{transform:scale(.98)}
+#dlBtn:disabled{background:#ccc;cursor:not-allowed;transform:none}
+@media(max-width:540px){.url-row{flex-direction:column}#dlBtn{justify-content:center}}
+.prog-wrap{height:5px;background:#f0f0f0;border-radius:5px;overflow:hidden;display:none;margin-top:.9rem}
+.prog-bar{height:100%;background:var(--red);border-radius:5px;width:0%;transition:width .35s ease}
+.prog-lbl{font-size:.76rem;color:var(--light);margin-top:.4rem;display:none;text-align:left}
+.err-box{background:#fff2f2;border:1px solid #ffc0c0;color:#c00;border-radius:11px;padding:.9rem 1.1rem;font-size:.87rem;display:none;margin-top:.9rem;text-align:left;line-height:1.6}
+.err-box a{color:var(--red)}
+
+/* RESULT */
+.result-wrap{max-width:660px;margin:1.2rem auto 0;display:none}
+.result-card{background:var(--surface);border-radius:18px;box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden;animation:up .28s ease}
+@keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+video.prev,img.prev{width:100%;max-height:380px;object-fit:contain;background:#111;display:block}
+img.prev{object-fit:cover}
+.rinfo{padding:1.2rem 1.4rem}
+.rtitle{font-family:'Syne',sans-serif;font-weight:700;font-size:.97rem;margin-bottom:.5rem}
+.rmeta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.9rem}
+.rtag{font-size:.73rem;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--bg);border:1px solid var(--border);color:var(--muted)}
+.q-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.q-btn{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;padding:.65rem;border-radius:11px;border:2px solid var(--border);background:#fff;cursor:pointer;transition:all .15s;text-decoration:none}
+.q-btn:hover{border-color:var(--red);background:var(--red-light)}
+.q-btn.prim{background:var(--red);border-color:var(--red)}
+.q-btn.prim:hover{background:var(--red-dark);border-color:var(--red-dark)}
+.q-btn .ql{font-weight:700;font-size:.97rem;color:var(--text)}
+.q-btn .qs{font-size:.7rem;color:var(--light)}
+.q-btn.prim .ql,.q-btn.prim .qs{color:#fff}
+
+/* SECTIONS */
+.sec{padding:3.5rem 1.5rem}
+.sec-in{max-width:960px;margin:0 auto}
+.sec-lbl{display:inline-block;background:var(--red-light);color:var(--red);font-size:.73rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:3px 11px;border-radius:20px;margin-bottom:.7rem}
+.sec h2{font-family:'Syne',sans-serif;font-size:clamp(1.4rem,3.5vw,2rem);font-weight:800;margin-bottom:.4rem}
+.sec h2 span{color:var(--red)}
+.sec-sub{color:var(--muted);max-width:500px;line-height:1.7;margin-bottom:2.2rem;font-size:.95rem}
+.white-bg{background:var(--surface)}
+
+/* STEPS */
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1.4rem}
+.step{text-align:center;padding:1.2rem .8rem}
+.step-n{width:50px;height:50px;background:var(--red);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;margin:0 auto .9rem}
+.step h3{font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem;margin-bottom:.4rem}
+.step p{font-size:.85rem;color:var(--muted);line-height:1.6}
+
+/* FEATURES */
+.feats{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}
+.feat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.4rem;transition:box-shadow .2s,transform .2s}
+.feat:hover{box-shadow:var(--shadow);transform:translateY(-2px)}
+.fi{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;margin-bottom:.9rem}
+.feat h3{font-family:'Syne',sans-serif;font-size:.93rem;font-weight:700;margin-bottom:.35rem}
+.feat p{font-size:.84rem;color:var(--muted);line-height:1.6}
+
+/* FORMATS */
+.fmts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem}
+.fmt{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.1rem;text-align:center;transition:border-color .15s,box-shadow .15s}
+.fmt:hover{border-color:var(--red);box-shadow:0 4px 20px rgba(230,0,35,.07)}
+.ficon{font-size:1.8rem;display:block;margin-bottom:.45rem}
+.fmt h4{font-family:'Syne',sans-serif;font-weight:700;font-size:.93rem}
+.fmt p{font-size:.77rem;color:var(--light);margin-top:3px}
+
+/* FAQ */
+.faqs{max-width:660px;margin:0 auto}
+.faq-item{border:1px solid var(--border);border-radius:11px;overflow:hidden;margin-bottom:.65rem;background:var(--surface)}
+.faq-q{padding:.9rem 1.1rem;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:.9rem;transition:background .15s;gap:1rem}
+.faq-q:hover{background:var(--bg)}
+.faq-item.open .faq-q{color:var(--red)}
+.arr{transition:transform .25s;color:var(--light);font-size:.78rem;flex-shrink:0}
+.faq-item.open .arr{transform:rotate(180deg);color:var(--red)}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease;padding:0 1.1rem;font-size:.87rem;color:var(--muted);line-height:1.7}
+.faq-item.open .faq-a{max-height:300px;padding-bottom:.9rem}
+
+/* DEPLOY NOTICE */
+.deploy-note{background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:1rem 1.2rem;font-size:.85rem;color:#92400e;line-height:1.7;margin-top:1rem;text-align:left}
+.deploy-note strong{color:#78350f}
+.deploy-note code{background:#fef3c7;padding:1px 6px;border-radius:4px;font-family:monospace;font-size:.82rem}
+
+/* FOOTER */
+footer{background:#111;color:rgba(255,255,255,.65);padding:2.5rem 1.5rem 1.2rem}
+.foot-in{max-width:960px;margin:0 auto}
+.foot-top{display:flex;justify-content:space-between;gap:2rem;flex-wrap:wrap;margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid rgba(255,255,255,.1)}
+.flogo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;color:#fff}
+.flogo span{color:#ff6b81}
+.fdesc{font-size:.83rem;margin-top:.4rem;max-width:240px;line-height:1.7}
+.flinks h5{color:#fff;font-family:'Syne',sans-serif;font-weight:700;margin-bottom:.6rem;font-size:.85rem}
+.flinks ul{list-style:none}
+.flinks li{margin-bottom:.35rem}
+.flinks a{color:rgba(255,255,255,.55);text-decoration:none;font-size:.83rem;transition:color .15s}
+.flinks a:hover{color:#ff6b81}
+.foot-bot{font-size:.77rem;text-align:center}
+.foot-bot a{color:rgba(255,255,255,.45);text-decoration:none;margin:0 .4rem}
+@media(max-width:540px){.foot-top{flex-direction:column}}
+
+/* TOAST */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#222;color:#fff;padding:.65rem 1.1rem;border-radius:10px;font-size:.87rem;opacity:0;transform:translateY(16px);transition:opacity .25s,transform .25s;z-index:999;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="logo"><div class="logo-icon">P</div>Pin<span>Save</span></a>
+  <ul class="nav-links">
+    <li><a href="#how-to">How to?</a></li>
+    <li><a href="#formats">Formats</a></li>
+    <li><a href="#faq">FAQ</a></li>
+    <li><a href="/" style="color:var(--red);font-weight:600">Image Downloader</a></li>
+    <li><a href="/" style="color:var(--red);font-weight:600">GIF Downloader</a></li>
+  </ul>
+  <a href="#" class="ext-btn">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Extension
+  </a>
+</nav>
+
+<section class="hero">
+  <div class="badge">✦ Free · No Watermark · No Login Required</div>
+  <h1>Download Pinterest <span>Videos,<br>Images & GIFs</span> in HD — Free</h1>
+  <p>Paste any Pinterest link and save videos, photos, or animated GIFs to your device instantly. Supports pin.it short links too.</p>
+
+  <div class="dl-box">
+    <div class="tabs">
+      <div class="tab on" onclick="setTab(this)"><span class="dot" style="background:#E60023"></span> All</div>
+      <div class="tab" onclick="setTab(this)"><span class="dot" style="background:#E60023"></span> Video</div>
+      <div class="tab" onclick="setTab(this)"><span class="dot" style="background:#0ea5e9"></span> Image</div>
+      <div class="tab" onclick="setTab(this)"><span class="dot" style="background:#a855f7"></span> GIF</div>
+    </div>
+    <div class="url-row">
+      <div class="inp-wrap">
+        <input id="urlInput" type="text" placeholder="Paste Pinterest URL — e.g. https://pin.it/... or pinterest.com/pin/..." />
+        <button class="paste-btn" onclick="pasteUrl()">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          Paste
+        </button>
+      </div>
+      <button id="dlBtn" onclick="startDownload()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download
+      </button>
+    </div>
+    <div class="prog-wrap" id="pw"><div class="prog-bar" id="pb"></div></div>
+    <div class="prog-lbl" id="pl"></div>
+    <div class="err-box" id="eb"></div>
+
+    <div class="deploy-note" id="deployNote" style="display:none">
+      <strong>⚠️ Server Not Connected</strong><br>
+      This website needs a backend server to work because Pinterest blocks direct browser requests (CORS).
+      To deploy this fully:<br>
+      1. Install Node.js and run: <code>node server.js</code><br>
+      2. Open <code>http://localhost:3000</code><br>
+      3. Or deploy to <strong>Railway / Render / VPS</strong> and update <code>API_BASE</code> in this file.<br>
+      See the included <code>README.md</code> for full instructions.
+    </div>
+  </div>
+
+  <div class="result-wrap" id="rw">
+    <div class="result-card" id="rc"></div>
+  </div>
+</section>
+
+<!-- HOW TO -->
+<section class="sec white-bg" id="how-to">
+  <div class="sec-in">
+    <div style="text-align:center;margin-bottom:2rem">
+      <span class="sec-lbl">Quick Guide</span>
+      <h2>Download in <span>3 Simple Steps</span></h2>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="step-n">1</div><h3>Copy the Link</h3><p>On Pinterest app, tap ••• then "Copy Link". On desktop, copy the URL from your browser.</p></div>
+      <div class="step"><div class="step-n">2</div><h3>Paste & Click</h3><p>Paste the URL in the box above and click the red Download button. Works with pin.it short links!</p></div>
+      <div class="step"><div class="step-n">3</div><h3>Save to Device</h3><p>Choose your preferred quality and the file downloads directly to your phone or computer.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="sec" style="background:var(--bg)">
+  <div class="sec-in">
+    <span class="sec-lbl">Why PinSave?</span>
+    <h2>Everything You Need to <span>Save Pinterest</span></h2>
+    <p class="sec-sub">Fast, free, and completely private. No sign-ups. No watermarks. No catch.</p>
+    <div class="feats">
+      <div class="feat"><div class="fi" style="background:#fff0f1">🎬</div><h3>HD Video</h3><p>Download in 720p, 1080p, or best available quality. MP4 format, plays everywhere.</p></div>
+      <div class="feat"><div class="fi" style="background:#f0f9ff">🖼️</div><h3>Full-Res Images</h3><p>Save Pinterest photos in original resolution. Supports JPG, PNG, and WebP.</p></div>
+      <div class="feat"><div class="fi" style="background:#faf5ff">✨</div><h3>Animated GIFs</h3><p>Download Pinterest GIFs with no quality loss or conversion artifacts.</p></div>
+      <div class="feat"><div class="fi" style="background:#f0fdf4">🔒</div><h3>100% Private</h3><p>No login, no tracking. We never store your URLs or downloaded content.</p></div>
+      <div class="feat"><div class="fi" style="background:#fff7ed">⚡</div><h3>Blazing Fast</h3><p>Server-side fetching means results in under 2 seconds, even for HD videos.</p></div>
+      <div class="feat"><div class="fi" style="background:#fff0f1">📱</div><h3>Mobile-Ready</h3><p>Works perfectly on Android and iOS. No app install needed — just open and paste.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- FORMATS -->
+<section class="sec white-bg" id="formats">
+  <div class="sec-in">
+    <div style="text-align:center;margin-bottom:1.8rem">
+      <span class="sec-lbl">Supported Formats</span>
+      <h2>All Pinterest <span>Content Types</span></h2>
+    </div>
+    <div class="fmts">
+      <div class="fmt"><span class="ficon">🎥</span><h4>MP4 Video</h4><p>HD &amp; 4K</p></div>
+      <div class="fmt"><span class="ficon">🎵</span><h4>MP3 Audio</h4><p>Extract audio</p></div>
+      <div class="fmt"><span class="ficon">🖼️</span><h4>JPEG / PNG</h4><p>Full resolution</p></div>
+      <div class="fmt"><span class="ficon">✨</span><h4>GIF / WebP</h4><p>Animated pins</p></div>
+      <div class="fmt"><span class="ficon">📌</span><h4>Idea Pins</h4><p>Multi-page</p></div>
+      <div class="fmt"><span class="ficon">🔗</span><h4>pin.it Links</h4><p>Short URLs</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="sec" id="faq" style="background:var(--bg)">
+  <div class="sec-in">
+    <div style="text-align:center;margin-bottom:1.8rem">
+      <span class="sec-lbl">FAQ</span>
+      <h2>Frequently Asked <span>Questions</span></h2>
+    </div>
+    <div class="faqs">
+      <div class="faq-item open">
+        <div class="faq-q" onclick="toggleFaq(this)">Can I download any Pinterest video for free?<span class="arr">▼</span></div>
+        <div class="faq-a">Yes! PinSave is completely free with no limits. Paste the Pinterest URL, click Download, choose quality. No registration ever.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Does it work on iPhone and Android?<span class="arr">▼</span></div>
+        <div class="faq-a">Absolutely. Open PinSave in Safari, Chrome, or any mobile browser. Works seamlessly on iOS and Android without any app install.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Will the downloaded video have a watermark?<span class="arr">▼</span></div>
+        <div class="faq-a">No watermarks at all. PinSave downloads the original file directly from Pinterest's CDN, exactly as it was uploaded.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Why does my video play instead of download?<span class="arr">▼</span></div>
+        <div class="faq-a">Some browsers open videos by default. Long-press (mobile) or right-click (desktop) the Download button and choose "Save link as..." or "Download Linked File".</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Why does it need a server to work?<span class="arr">▼</span></div>
+        <div class="faq-a">Pinterest blocks direct browser requests (CORS policy). Tools like KlickPin run a backend server that fetches Pinterest content server-side, bypassing CORS. PinSave includes a ready-to-deploy Node.js server for exactly this purpose.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Can I download entire Pinterest boards?<span class="arr">▼</span></div>
+        <div class="faq-a">PinSave currently supports individual pin URLs. Board bulk download is on the roadmap. Use individual pin URLs for now.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="foot-in">
+    <div class="foot-top">
+      <div>
+        <div class="flogo">Pin<span>Save</span></div>
+        <p class="fdesc">Download Pinterest videos, images, and GIFs instantly. Free, no watermark, no login.</p>
+      </div>
+      <div class="flinks"><h5>Tools</h5><ul><li><a href="/">Video Downloader</a></li><li><a href="/">Image Downloader</a></li><li><a href="/">GIF Downloader</a></li><li><a href="/">Chrome Extension</a></li></ul></div>
+      <div class="flinks"><h5>Company</h5><ul><li><a href="/">About Us</a></li><li><a href="/">Blog</a></li><li><a href="/">Contact</a></li><li><a href="/">Terms & Privacy</a></li></ul></div>
+      <div class="flinks"><h5>Supported URLs</h5><ul><li><a href="/">pinterest.com/pin/...</a></li><li><a href="/">pin.it/... short links</a></li><li><a href="/">in.pinterest.com</a></li><li><a href="/">www.pinterest.com</a></li></ul></div>
+    </div>
+    <div class="foot-bot">
+      <p>&copy; 2026 PinSave &nbsp;·&nbsp;<a href="/">Terms</a><a href="/">Privacy</a><a href="/">About</a></p>
+      <p style="margin-top:.4rem;opacity:.45">PinSave is not affiliated with Pinterest, Inc. All media is fetched directly from Pinterest's public CDN.</p>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// =============================================
+// CONFIG: Change this to your deployed server URL
+// When running locally:  http://localhost:3000
+// When deployed on Railway/Render: https://your-app.railway.app
+// =============================================
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? ''  // same origin when running via node server.js
+  : '';  // <-- replace with your deployed URL e.g. 'https://pinsave.railway.app'
+
+function toast(msg, d=2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), d);
+}
+
+function setTab(el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  el.classList.add('on');
+}
+
+async function pasteUrl() {
+  try {
+    const txt = await navigator.clipboard.readText();
+    document.getElementById('urlInput').value = txt;
+    toast('URL pasted!');
+  } catch {
+    document.getElementById('urlInput').focus();
+    toast('Click the box and press Ctrl+V / Cmd+V');
+  }
+}
+
+function toggleFaq(el) { el.closest('.faq-item').classList.toggle('open'); }
+
+function setProgress(pct, lbl) {
+  const pw=document.getElementById('pw'), pb=document.getElementById('pb'), pl=document.getElementById('pl');
+  if(pct===null){pw.style.display='none';pl.style.display='none';return;}
+  pw.style.display='block'; pl.style.display='block';
+  pb.style.width=pct+'%'; pl.textContent=lbl||'';
+}
+
+function showErr(msg) {
+  const e=document.getElementById('eb');
+  e.innerHTML=msg; e.style.display='block';
+  setTimeout(()=>e.style.display='none',8000);
+}
+
+function clearErr() { document.getElementById('eb').style.display='none'; }
+
+function downloadViaProxy(mediaUrl, filename) {
+  const proxyUrl = `${API_BASE}/api/proxy?url=${encodeURIComponent(mediaUrl)}`;
+  const a = document.createElement('a');
+  a.href = proxyUrl;
+  a.download = filename || 'pinterest-media';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function buildCard(data) {
+  const { pinId, type, title, videoUrls, imageUrl, thumbnailUrl } = data;
+  let preview = '';
+  let btns = '';
+
+  if (type === 'video' && Object.keys(videoUrls).length > 0) {
+    const bestUrl = videoUrls['1080p'] || videoUrls['720p'] || videoUrls['hls'] || videoUrls['hd'] || Object.values(videoUrls)[0];
+    preview = `<video class="prev" controls preload="metadata" poster="${thumbnailUrl||''}">
+      <source src="${bestUrl}" type="video/mp4">
+    </video>`;
+    const qualities = [
+      { label:'1080p', key:'1080p', sub:'Full HD' },
+      { label:'720p', key:'720p', sub:'HD' },
+      { label:'480p', key:'480p', sub:'SD' },
+      { label:'360p', key:'360p', sub:'Low' },
+    ];
+    const available = qualities.filter(q => videoUrls[q.key]);
+    if (!available.length) available.push({ label:'HD', key:'hd', sub:'Best' });
+    btns = available.map((q, i) => {
+      const url = videoUrls[q.key] || bestUrl;
+      return `<a class="q-btn ${i===0?'prim':''}" onclick="downloadViaProxy('${url}','pinterest-${pinId}-${q.label}.mp4');toast('Downloading ${q.label}...');" href="javascript:void(0)">
+        <span class="ql">⬇ ${q.label}</span><span class="qs">${q.sub} MP4</span>
+      </a>`;
+    }).join('');
+    if (thumbnailUrl) btns += `<a class="q-btn" href="${API_BASE}/api/proxy?url=${encodeURIComponent(thumbnailUrl)}" download="pinterest-thumb.jpg" onclick="toast('Saving thumbnail...')">
+      <span class="ql">Thumb</span><span class="qs">JPG</span>
+    </a>`;
+  } else if (imageUrl) {
+    preview = `<img class="prev" src="${imageUrl}" alt="${title||'Pinterest'}" onerror="this.src=''" />`;
+    const ext = type==='gif' ? 'gif' : 'jpg';
+    btns = `<a class="q-btn prim" href="${API_BASE}/api/proxy?url=${encodeURIComponent(imageUrl)}" download="pinterest-${pinId}.${ext}" onclick="toast('Downloading...')">
+      <span class="ql">⬇ ${type==='gif'?'GIF':'Image'}</span><span class="qs">Full Resolution</span>
+    </a>
+    <a class="q-btn" href="https://www.pinterest.com/pin/${pinId}/" target="_blank" rel="noopener">
+      <span class="ql">View Pin</span><span class="qs">Open Pinterest</span>
+    </a>`;
+  } else return null;
+
+  const typeTag = type==='video'?'🎬 Video':type==='gif'?'✨ GIF':'🖼️ Image';
+  return `${preview}<div class="rinfo">
+    <div class="rtitle">${title||'Pinterest Media'}</div>
+    <div class="rmeta"><span class="rtag">${typeTag}</span><span class="rtag">No Watermark</span><span class="rtag">Free</span></div>
+    <div class="q-grid">${btns}</div>
+  </div>`;
+}
+
+async function startDownload() {
+  clearErr();
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url) { showErr('Please paste a Pinterest URL first.'); return; }
+  if (!/pinterest\.|pin\.it/i.test(url)) { showErr('That doesn\'t look like a Pinterest URL. Please paste a pinterest.com or pin.it link.'); return; }
+
+  const btn = document.getElementById('dlBtn');
+  btn.disabled = true;
+  document.getElementById('rw').style.display = 'none';
+  document.getElementById('deployNote').style.display = 'none';
+  setProgress(20, 'Connecting to server...');
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/fetch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+
+    setProgress(70, 'Fetching Pinterest media...');
+    const json = await resp.json();
+
+    if (!resp.ok || !json.success) {
+      setProgress(null);
+      showErr(json.error || 'Something went wrong. Please try again.');
+      btn.disabled = false; return;
+    }
+
+    setProgress(95, 'Building download links...');
+    const cardHtml = buildCard(json.data);
+    if (!cardHtml) {
+      setProgress(null);
+      showErr('No downloadable media found in this pin. It may be private, deleted, or an unsupported format.');
+      btn.disabled = false; return;
+    }
+
+    document.getElementById('rc').innerHTML = cardHtml;
+    document.getElementById('rw').style.display = 'block';
+    document.getElementById('rw').scrollIntoView({ behavior:'smooth', block:'nearest' });
+    setProgress(100, 'Done!');
+    setTimeout(() => setProgress(null), 800);
+    toast('Media ready! Choose a quality to download.');
+
+  } catch (err) {
+    setProgress(null);
+    if (err.message && err.message.includes('fetch')) {
+      // Server not running
+      document.getElementById('deployNote').style.display = 'block';
+      showErr('Cannot connect to the PinSave server. <strong>This website requires a running backend.</strong> See the instructions below.');
+    } else {
+      showErr('Error: ' + err.message + '. Please try again.');
+    }
+  }
+
+  btn.disabled = false;
+}
+
+document.getElementById('urlInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startDownload();
+});
+
+// Open first FAQ
+document.querySelectorAll('.faq-item').forEach((it,i) => { if(i!==0) it.classList.remove('open'); });
+</script>
+</body>
+</html>
