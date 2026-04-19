@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
-const axios = require('axios');
-const cheerio = require('cheerio');
+const https = require('https');
+const http = require('http');
 const path = require('path');
 
 const app = express();
@@ -11,29 +11,29 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
   'Accept-Language': 'en-US,en;q=0.9',
-  'Accept-Encoding': 'gzip, deflate, br',
-  'Connection': 'keep-alive',
-  'Upgrade-Insecure-Requests': '1',
-  'Sec-Fetch-Dest': 'document',
-  'Sec-Fetch-Mode': 'navigate',
-  'Sec-Fetch-Site': 'none',
-  'Cache-Control': 'max-age=0',
 };
 
-async function resolvePinItUrl(shortUrl) {
-  try {
-    const resp = await axios.get(shortUrl, {
-      headers: HEADERS,
-      maxRedirects: 10,
-      timeout: 10000,
+function httpGet(url, redirects = 0) {
+  return new Promise((resolve, reject) => {
+    if (redirects > 10) return reject(new Error('Too many redirects'));
+    const mod = url.startsWith('https') ? https : http;
+    const req = mod.get(url, { headers: HEADERS }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        const next = res.headers.location.startsWith('http')
+          ? res.headers.location
+          : new URL(res.headers.location, url).href;
+        return resolve(httpGet(next, redirects + 1));
+      }
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', c => data += c);
+      res.on('end', () => resolve({ data, finalUrl: url }));
     });
-    return resp.request.res.responseUrl || resp.config.url;
-  } catch (err) {
-    if (err.response) return err.response.headers['location'] || shortUrl;
-    throw err;
-  }
+    req.on('error', reject);
+    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Timeout')); });
+  });
 }
 
 function extractPinId(url) {
@@ -41,160 +41,77 @@ function extractPinId(url) {
   return m ? m[1] : null;
 }
 
-function cleanUrl(url) {
-  if (!url) return null;
-  return url.replace(/\\u002F/g, '/').replace(/\\/g, '').replace(/&amp;/g, '&');
+function cleanUrl(u) {
+  if (!u) return null;
+  return u.replace(/\\u002F/g, '/').replace(/\\/g, '').replace(/&amp;/g, '&');
 }
 
-async function fetchPinData(pinId) {
-  const url = `https://www.pinterest.com/pin/${pinId}/`;
-  const resp = await axios.get(url, {
-    headers: HEADERS,
-    timeout: 15000,
-    decompress: true,
-  });
-  const html = resp.data;
-  const $ = cheerio.load(html);
+function extractMedia(html) {
+  let videoUrls = {};
+  let imageUrl = null;
+  let thumbnailUrl = null;
+  let title = '';
+  let type = 'image';
 
-  let result = {
-    pinId,
-    type: 'image',
-    title: '',
-    description: '',
-    videoUrls: {},
-    imageUrl: null,
-    thumbnailUrl: null,
-  };
+  const ogTitle = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i);
+  if (ogTitle) title = ogTitle[1];
 
-  // OG title / description
-  result.title = $('meta[property="og:title"]').attr('content') || '';
-  result.description = $('meta[property="og:description"]').attr('content') || '';
+  const ogImg = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i);
+  if (ogImg) thumbnailUrl = cleanUrl(ogImg[1]);
 
-  // OG video
-  const ogVideo = $('meta[property="og:video:url"]').attr('content') ||
-                  $('meta[property="og:video"]').attr('content');
-  const ogImage = $('meta[property="og:image"]').attr('content');
+  const ogVid = html.match(/<meta[^>]*property=["']og:video(?::url)?["'][^>]*content=["']([^"']+)["']/i);
+  if (ogVid) { videoUrls['hd'] = cleanUrl(ogVid[1]); type = 'video'; }
 
-  if (ogImage) result.thumbnailUrl = cleanUrl(ogImage);
-
-  // Search all script tags for Pinterest's redux state JSON
-  $('script').each((i, el) => {
-    const txt = $(el).html() || '';
-
-    // Video quality URLs
-    const patterns = [
-      { key: 'V_1080P', label: '1080p' },
-      { key: 'V_720P',  label: '720p'  },
-      { key: 'V_480P',  label: '480p'  },
-      { key: 'V_360P',  label: '360p'  },
-      { key: 'HLS',     label: 'hls'   },
-    ];
-    patterns.forEach(({ key, label }) => {
-      const re = new RegExp(`"${key}"\\s*:\\s*\\{[^}]*"url"\\s*:\\s*"([^"]+)"`, 'g');
-      let m;
-      while ((m = re.exec(txt)) !== null) {
-        if (!result.videoUrls[label]) {
-          result.videoUrls[label] = cleanUrl(m[1]);
-          result.type = 'video';
-        }
-      }
-    });
-
-    // Alternate video pattern
-    const altVideo = txt.match(/"video_url"\s*:\s*"(https:[^"]+\.mp4[^"]*)"/);
-    if (altVideo && !result.videoUrls['hd']) {
-      result.videoUrls['hd'] = cleanUrl(altVideo[1]);
-      result.type = 'video';
-    }
-
-    // Original image
-    const origImg = txt.match(/"orig"\s*:\s*\{[^}]*"url"\s*:\s*"([^"]+)"/);
-    if (origImg && !result.imageUrl) {
-      result.imageUrl = cleanUrl(origImg[1]);
-    }
-
-    // GIF detection
-    if (txt.includes('.gif') && !result.videoUrls['1080p']) {
-      const gifMatch = txt.match(/"url"\s*:\s*"(https:[^"]+\.gif[^"]*)"/);
-      if (gifMatch) {
-        result.imageUrl = cleanUrl(gifMatch[1]);
-        result.type = 'gif';
-      }
-    }
+  const qualities = [['1080p', 'V_1080P'], ['720p', 'V_720P'], ['480p', 'V_480P'], ['360p', 'V_360P']];
+  qualities.forEach(([label, key]) => {
+    const re = new RegExp('"' + key + '"\\s*:\\s*\\{[^}]*"url"\\s*:\\s*"([^"]+)"');
+    const m = html.match(re);
+    if (m) { videoUrls[label] = cleanUrl(m[1]); type = 'video'; }
   });
 
-  // Fallback to OG video
-  if (ogVideo && Object.keys(result.videoUrls).length === 0) {
-    result.videoUrls['hd'] = cleanUrl(ogVideo);
-    result.type = 'video';
-  }
+  const origImg = html.match(/"orig"\s*:\s*\{[^}]*"url"\s*:\s*"([^"]+)"/);
+  if (origImg) imageUrl = cleanUrl(origImg[1]);
 
-  // Fallback image from OG
-  if (!result.imageUrl && ogImage) {
-    result.imageUrl = cleanUrl(ogImage);
-    // Upgrade to original resolution
-    result.imageUrl = result.imageUrl
-      .replace('/236x/', '/originals/')
-      .replace('/474x/', '/originals/')
-      .replace('/736x/', '/originals/')
-      .replace('_b.jpg', '.jpg');
-  }
+  if (!imageUrl && thumbnailUrl) imageUrl = thumbnailUrl;
+  if (imageUrl && imageUrl.match(/\.gif/i)) type = 'gif';
 
-  return result;
+  return { videoUrls, imageUrl, thumbnailUrl, title, type };
 }
 
-// API: resolve + fetch pin
 app.post('/api/fetch', async (req, res) => {
   let { url } = req.body;
-  if (!url) return res.status(400).json({ error: 'URL is required' });
-
+  if (!url) return res.status(400).json({ error: 'URL required' });
   try {
-    // Resolve short URL
     if (/pin\.it/i.test(url)) {
-      url = await resolvePinItUrl(url);
+      const r = await httpGet(url);
+      url = r.finalUrl;
     }
-
     const pinId = extractPinId(url);
-    if (!pinId) {
-      return res.status(400).json({ error: 'Could not find a Pin ID in this URL. Please use a direct pinterest.com/pin/... link or a pin.it short link.' });
-    }
-
-    const data = await fetchPinData(pinId);
-
-    if (!data.imageUrl && Object.keys(data.videoUrls).length === 0) {
-      return res.status(404).json({ error: 'No downloadable media found in this pin. It may be private or deleted.' });
-    }
-
-    return res.json({ success: true, data });
+    if (!pinId) return res.status(400).json({ error: 'Could not find Pin ID in URL. Use a pinterest.com/pin/... or pin.it/... link.' });
+    const r = await httpGet('https://www.pinterest.com/pin/' + pinId + '/');
+    const media = extractMedia(r.data);
+    if (!media.imageUrl && Object.keys(media.videoUrls).length === 0)
+      return res.status(404).json({ error: 'No media found in this pin. It may be private or deleted.' });
+    return res.json({ success: true, data: { ...media, pinId } });
   } catch (err) {
-    console.error('Fetch error:', err.message);
-    return res.status(500).json({ error: 'Failed to fetch pin. Pinterest may be temporarily blocking requests. Please try again in a moment.' });
+    return res.status(500).json({ error: 'Failed to fetch pin: ' + err.message });
   }
 });
 
-// Proxy download (to bypass CORS on media)
 app.get('/api/proxy', async (req, res) => {
   const { url } = req.query;
-  if (!url) return res.status(400).send('URL required');
-  if (!/pinimg\.com|v\.pinimg\.com/i.test(url)) return res.status(403).send('Only Pinterest CDN URLs allowed');
-
+  if (!url || !/pinimg\.com|v\.pinimg\.com/i.test(url)) return res.status(403).send('Forbidden');
   try {
-    const resp = await axios.get(url, {
-      responseType: 'stream',
-      headers: {
-        'User-Agent': HEADERS['User-Agent'],
-        'Referer': 'https://www.pinterest.com/',
-      },
-      timeout: 30000,
-    });
-    res.set('Content-Type', resp.headers['content-type'] || 'application/octet-stream');
-    res.set('Content-Length', resp.headers['content-length'] || '');
-    res.set('Content-Disposition', `attachment; filename="pinterest-${Date.now()}"`);
-    resp.data.pipe(res);
+    const mod = url.startsWith('https') ? https : http;
+    mod.get(url, { headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://www.pinterest.com/' } }, (r) => {
+      res.set('Content-Type', r.headers['content-type'] || 'application/octet-stream');
+      res.set('Content-Disposition', 'attachment; filename="pinterest-media"');
+      r.pipe(res);
+    }).on('error', (e) => res.status(500).send(e.message));
   } catch (err) {
-    res.status(500).send('Proxy error: ' + err.message);
+    res.status(500).send(err.message);
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`PinSave server running on http://localhost:${PORT}`));
+app.listen(PORT, () => console.log('PinSave running on port ' + PORT));
